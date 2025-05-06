@@ -1,0 +1,377 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "arquitectura de la plataforma de comercio"
+
+# Estos son parametros, como constantes del proyeccto que podemos utilzar cuando estemos definiendo los recursos
+Parameters:
+  EnvironmentName:
+    Description: 'dev'
+    Type: String
+    Default: 'dev'
+    AllowedValues: ['dev', 'staging', 'prod']
+  
+  InstanceType:
+    Description: 'Tipo de instancia EC2'
+    Type: String
+    Default: 't2.micro'
+    AllowedValues: ['t2.micro', 't2.small', 't2.medium']
+
+  DBInstanceType:
+    Description: 'Tipo de instancia RDS'
+    Type: String
+    Default: 'db.t3.micro'
+    AllowedValues: ['db.t3.micro', 'db.t3.small', 'db.t3.medium']
+  
+  DBName:
+    Description: 'Nombre de la base de datos'
+    Type: String
+    Default: 'ecommercedb'
+
+  DBUsername:
+    Description: 'Usuario maestro de RDS'
+    Type: String
+    Default: 'admin'
+  
+  DBPassword:
+    Description: 'Contraseña de RDS (mínimo 8 caracteres)'
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    MaxLength: 64
+    ConstraintDescription: 'Debe tener entre 8 y 64 caracteres'
+
+  KeyName:
+    Description: 'Nombre del par de claves EC2 existente'
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    Default: 'sandbox-key'  # Nombre que creaste en AWS
+  
+  SSHLocation:
+    Description: 'IP permitida para acceder al Bastión'
+    Type: String
+    Default: '0.0.0.0/0'
+
+
+Mappings:
+  # Son tablas en los que nos permite mapear en este caso sobre regiones, util si nesecitamos 
+  # cambiar de region, ya que los id de las AMI cambia segun la region
+  RegionMap:
+    us-east-1:
+      AMI: 'ami-0c55b159cbfafe1f0'  # Amazon Linux 2
+
+Resources:
+  #Empezamos creando en donde vamos a poner todo, es decir la seccion de red (VPC)
+  #https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/AWS_VpcLattice.html
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties: 
+      CidrBlock: '10.0.0.0/16'   #Direccion de Red de la VPC
+      EnableDnsSupport: true   # Es para la resolucion inter del DNS la linea 32 y 33
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-VPC'
+  
+  #Aqui creamos las subredes publicas que van a contener el balanc
+  #https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-subnet.html#cfn-ec2-subnet-mappubliciponlaunch
+  PublicSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: '10.0.1.0/24'
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true #Asigna IP pública automáticamente (para recursos públicos)
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-PublicSubnet'
+
+  PrivateSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: '10.0.2.0/24'
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-PrivateSubnet'
+
+  # este permite la comunicacion de la VPC con internet
+  #https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-internetgateway.html
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-IGW'
+#Utilice el recurso AWS::EC2::VPCGatewayAttachment para asociar una puerta de enlace de Internet con una VPC
+  GatewayAttachment:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  #Ahora nesecitamos que las redes privadas tengan cierta comunicacion con internet, esto debido a 
+  #actualizaciones de software
+  EIP:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-EIP'
+
+  NATGateway:
+    Type: 'AWS::EC2::NatGateway'
+    Properties:
+      AllocationId: !GetAtt EIP.AllocationId
+      SubnetId: !Ref PublicSubnet
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-NATGW'
+
+
+  #Ahora vamos a hacer la tabla de enrutamiento entre las diferentes sub redes
+  PublicRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-Public-RT'
+  PublicRoute:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Ref InternetGateway
+  
+  PrivateRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-Private-RT'
+    
+  PrivateRoute:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: '0.0.0.0/0'
+      NatGatewayId: !Ref NATGateway
+  
+
+  #Ahora vamos a asociar las tablas de enrutamiento con las subredes
+  PublicSubnetRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateSubnetRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateRouteTable
+
+  #Ahora vamos a crear los diferentes grupos de seguridad 
+  LoadBalancerSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'Security Group para ALB'
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80   #permitimos el trafico HTTP
+          ToPort: 80
+          CidrIp: '0.0.0.0/0' # podemos acceder desde cualquier ip
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-ALB-SG'
+
+  #Solo acepta tráfico del ALB (puerto 80) y del Bastión (SSH, puerto 22).
+  WebServerSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'Security Group para Web Servers'
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref BastionSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-Web-SG'
+
+  BastionSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'Security Group para Bastión Host'
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref SSHLocation
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-Bastion-SG'
+  # Solo permite conexiones MySQL (puerto 3306) desde las instancias EC2
+  DBSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'Security Group para RDS'
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref WebServerSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-DB-SG'
+
+
+  #Ahora vamos a crear el balanceador de carga
+  ApplicationLoadBalancer:
+    Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
+    Properties:
+      Name: !Sub '${EnvironmentName}-ALB'
+      Scheme: internet-facing  # Accesible desde Internet
+      Subnets:
+        - !Ref PublicSubnet # Debe estar en subred pública
+      SecurityGroups:
+        - !Ref LoadBalancerSecurityGroup
+      Type: application
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-ALB'
+
+  ALBTargetGroup:
+    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Properties:
+      Name: !Sub '${EnvironmentName}-TG'
+      Port: 80
+      Protocol: HTTP
+      VpcId: !Ref VPC
+      HealthCheckPath: '/'
+      HealthCheckIntervalSeconds: 30
+      TargetType: instance
+
+  ALBListener:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ALBTargetGroup
+
+
+  #Ahora vamos a añadir donde se va a alojar el web server
+  WebServerLaunchTemplate:
+    Type: 'AWS::EC2::LaunchTemplate'
+    Properties:
+      LaunchTemplateName: !Sub '${EnvironmentName}-LaunchTemplate'
+      LaunchTemplateData:
+        ImageId: !FindInMap ['RegionMap', !Ref 'AWS::Region', 'AMI']
+        InstanceType: !Ref InstanceType
+        KeyName: !Ref KeyName
+        SecurityGroupIds:
+          - !Ref WebServerSecurityGroup
+        UserData: 
+          Fn::Base64: !Sub |
+            #!/bin/bash -xe
+            # Actualizar sistema
+            yum update -y
+            
+            # Instalar Node.js y herramientas
+            curl -sL https://rpm.nodesource.com/setup_14.x | sudo bash -
+            yum install -y nodejs git
+
+  # ==================== AUTO SCALING GROUP ====================
+  WebServerAutoScalingGroup:
+    Type: 'AWS::AutoScaling::AutoScalingGroup'
+    Properties:
+      LaunchTemplate:
+        LaunchTemplateId: !Ref WebServerLaunchTemplate
+        Version: !GetAtt WebServerLaunchTemplate.LatestVersionNumber
+      MinSize: 1
+      MaxSize: 3  # Límite del sandbox
+      DesiredCapacity: 1
+      TargetGroupARNs:
+        - !Ref ALBTargetGroup
+      VPCZoneIdentifier:
+        - !Ref PrivateSubnet
+      HealthCheckType: ELB
+      HealthCheckGracePeriod: 300
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-WebServer'
+          PropagateAtLaunch: true
+
+  DBSubnetGroup:
+    Type: 'AWS::RDS::DBSubnetGroup'
+    Properties:
+      DBSubnetGroupDescription: 'Subnet group para RDS'
+      SubnetIds:
+        - !Ref PrivateSubnet
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-DBSubnetGroup'
+
+  DBInstance:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      Engine: 'MySQL'
+      DBInstanceClass: !Ref DBInstanceType
+      AllocatedStorage: 20
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBName: !Ref DBName
+      VPCSecurityGroups:
+        - !GetAtt DBSecurityGroup.GroupId
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      MultiAZ: false
+      PubliclyAccessible: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-RDS'
+
+  
+    # ==================== BASTION HOST ====================
+  BastionHost:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: 't2.micro'
+      ImageId: !FindInMap ['RegionMap', !Ref 'AWS::Region', 'AMI']
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref BastionSecurityGroup
+      KeyName: !Ref KeyName
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-Bastion'
+
+
+Outputs:
+  WebsiteURL:
+    Description: 'URL de acceso a la aplicación'
+    Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}'
+
+  BastionHostIP:
+    Description: 'IP pública del Bastión Host'
+    Value: !GetAtt BastionHost.PublicIp
+
+  DBEndpoint:
+    Description: 'Endpoint de la base de datos RDS'
+    Value: !GetAtt DBInstance.Endpoint.Address
+
+  SSHCommand:
+    Description: 'Comando para conectarse al Bastión'
+    Value: !Sub 'ssh -i ${KeyName}.pem ec2-user@${BastionHost.PublicIp}'
