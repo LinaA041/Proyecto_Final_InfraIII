@@ -55,7 +55,7 @@ Mappings:
   # cambiar de region, ya que los id de las AMI cambia segun la region
   RegionMap:
     us-east-1:
-      AMI: 'ami-0c55b159cbfafe1f0'  # Amazon Linux 2
+      AMI: 'ami-0f88e80871fd81e91'  # Amazon Linux 2
 
 Resources:
   #Empezamos creando en donde vamos a poner todo, es decir la seccion de red (VPC)
@@ -83,16 +83,39 @@ Resources:
         - Key: Name
           Value: !Sub '${EnvironmentName}-PublicSubnet'
 
-  PrivateSubnet:
+  PublicSubnet2:
     Type: 'AWS::EC2::Subnet'
     Properties:
       VpcId: !Ref VPC
       CidrBlock: '10.0.2.0/24'
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: true #Asigna IP pública automáticamente (para recursos públicos)
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-PublicSubnet2'
+
+  PrivateSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: '10.0.3.0/24'
       AvailabilityZone: !Select [0, !GetAZs '']
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
           Value: !Sub '${EnvironmentName}-PrivateSubnet'
+
+  PrivateSubnet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: '10.0.4.0/24'
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-PrivateSubnet2'
+
 
   # este permite la comunicacion de la VPC con internet
   #https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-internetgateway.html
@@ -210,7 +233,7 @@ Resources:
   BastionSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
-      GroupDescription: 'Security Group para Bastión Host'
+      GroupDescription: 'Security Group para Bastion Host'
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -244,6 +267,7 @@ Resources:
       Scheme: internet-facing  # Accesible desde Internet
       Subnets:
         - !Ref PublicSubnet # Debe estar en subred pública
+        - !Ref PublicSubnet2 # Debe estar en subred pública
       SecurityGroups:
         - !Ref LoadBalancerSecurityGroup
       Type: application
@@ -321,6 +345,7 @@ Resources:
       DBSubnetGroupDescription: 'Subnet group para RDS'
       SubnetIds:
         - !Ref PrivateSubnet
+        - !Ref PrivateSubnet2
       Tags:
         - Key: Name
           Value: !Sub '${EnvironmentName}-DBSubnetGroup'
