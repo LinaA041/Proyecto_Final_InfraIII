@@ -31,14 +31,5 @@ function removeFromCart(itemId) {
         .catch(err => console.error('Error:', err));
 }
 
-function checkout() {
-    fetch('/orders/create', { method: 'POST' })
-        .then(() => {
-            alert('Compra realizada con éxito');
-            updateCart();
-        })
-        .catch(err => console.error('Error:', err));
-}
 
-// Inicializar
 updateCart();

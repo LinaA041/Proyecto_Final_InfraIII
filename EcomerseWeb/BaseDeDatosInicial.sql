@@ -34,6 +34,31 @@ CREATE TABLE cart_items (
     FOREIGN KEY (product_id) REFERENCES products(id)
 );
 
+
+-- Tabla de órdenes simplificada
+CREATE TABLE orders (
+    order_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    total DECIMAL(10,2) NOT NULL,
+    city TEXT NOT NULL,
+    address TEXT NOT NULL,
+    fullName TEXT NOT NULL,
+    typePayment TEXT NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending',
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Tabla de items de orden simplificada
+CREATE TABLE order_items (
+    item_id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
 -- Datos de ejemplo CON DESCRIPCIONES
 INSERT INTO users (username, password) VALUES 
 ('admin', 'admin123'), 
