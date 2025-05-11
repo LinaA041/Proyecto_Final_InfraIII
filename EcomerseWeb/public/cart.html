@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tienda Online</title>
+    <title>Carrito - Tienda Online</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
@@ -11,10 +11,6 @@
     <header class="main-header">
         <div class="header-content">
             <h1 class="logo">Tienda<span>Online</span></h1>
-            <div class="search-bar">
-                <input type="text" placeholder="Buscar productos...">
-                <button><i class="material-icons">search</i></button>
-            </div>
             <nav class="user-nav">
                 <a href="cart.html" class="cart-link">
                     <i class="material-icons">shopping_cart</i>
@@ -28,14 +24,33 @@
         </div>
     </header>
 
-    <main class="product-container">
-        <h2>Nuestros Productos</h2>
-        <div class="product-grid" id="productGrid">
-            <!-- Productos cargados dinámicamente -->
+    <main class="cart-container">
+        <h1><i class="material-icons">shopping_cart</i> Tu Carrito</h1>
+        
+        <div id="cartItems" class="cart-items">
+            <!-- Productos se cargan dinámicamente -->
+        </div>
+
+        <div class="cart-summary">
+            <div class="summary-row">
+                <span>Subtotal:</span>
+                <span id="subtotal">$0.00</span>
+            </div>
+            <div class="summary-row">
+                <span>Envío:</span>
+                <span id="shipping">$0.00</span>
+            </div>
+            <div class="summary-row total">
+                <span>Total:</span>
+                <span id="cartTotal">$0.00</span>
+            </div>
+
+            <button id="checkoutBtn" class="btn-checkout">Proceder al Pago</button>
+            <a href="index.html" class="btn-continue">Seguir Comprando</a>
         </div>
     </main>
 
-    <script src="scripts/products.js"></script>
+    <script src="scripts/cart.js"></script>
     <script src="scripts/auth.js"></script>
 </body>
 </html>

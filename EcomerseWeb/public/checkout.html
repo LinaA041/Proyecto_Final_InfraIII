@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finalizar Compra - Tienda Online</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <header class="main-header">
+        <div class="header-content">
+            <h1 class="logo">Tienda<span>Online</span></h1>
+            <nav class="user-nav">
+                <a href="cart.html" class="cart-link">
+                    <i class="material-icons">shopping_cart</i>
+                    <span id="cartCount">0</span>
+                </a>
+                <div class="user-menu">
+                    <span id="usernameDisplay"></span>
+                    <button id="logoutBtn" class="btn-logout">Salir</button>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="checkout-container">
+        <h1><i class="material-icons">payment</i> Finalizar Compra</h1>
+        
+        <div class="checkout-steps">
+            <div class="step active">1. Envío</div>
+            <div class="step">2. Pago</div>
+            <div class="step">3. Confirmación</div>
+        </div>
+
+        <form id="checkoutForm" class="checkout-form">
+            <section class="checkout-section">
+                <h2><i class="material-icons">local_shipping</i> Información de Envío</h2>
+                <div class="form-group">
+                    <label for="fullName">Nombre Completo</label>
+                    <input type="text" id="fullName" required>
+                </div>
+                <div class="form-group">
+                    <label for="address">Dirección</label>
+                    <textarea id="address" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="city">Ciudad</label>
+                    <input type="text" id="city" required>
+                </div>
+            </section>
+
+            <section class="checkout-section">
+                <h2><i class="material-icons">credit_card</i> Método de Pago</h2>
+                <div class="payment-methods">
+                    <label class="payment-method">
+                        <input type="radio" name="payment" value="credit" checked>
+                        <div class="payment-content">
+                            <i class="material-icons">credit_card</i>
+                            <span>Tarjeta de Crédito</span>
+                        </div>
+                    </label>
+                    <label class="payment-method">
+                        <input type="radio" name="payment" value="debit">
+                        <div class="payment-content">
+                            <i class="material-icons">account_balance</i>
+                            <span>Tarjeta de Débito</span>
+                        </div>
+                    </label>
+                </div>
+            </section>
+
+            <div class="checkout-actions">
+                <a href="cart.html" class="btn-back">Volver al Carrito</a>
+                <button type="submit" class="btn-confirm">Confirmar Compra</button>
+            </div>
+        </form>
+    </main>
+
+    <script src="scripts/cart.js"></script>
+    <script src="scripts/auth.js"></script>
+    <script>
+        document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Simular procesamiento de pago
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            alert('¡Compra realizada con éxito!');
+            window.cart.clearCart();
+            window.location.href = 'index.html';
+        });
+    </script>
+</body>
+</html>
