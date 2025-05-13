@@ -24,12 +24,12 @@ Parameters:
   DBName:
     Description: 'Nombre de la base de datos'
     Type: String
-    Default: 'ecommercedb'
+    Default: 'simple_shop'
 
   DBUsername:
     Description: 'Usuario maestro de RDS'
     Type: String
-    Default: 'admin'
+    Default: 'user'
   
   DBPassword:
     Description: 'Contraseña de RDS (mínimo 8 caracteres)'
@@ -37,6 +37,7 @@ Parameters:
     NoEcho: true
     MinLength: 8
     MaxLength: 64
+    Default: 'password'
     ConstraintDescription: 'Debe tener entre 8 y 64 caracteres'
 
   KeyName:
