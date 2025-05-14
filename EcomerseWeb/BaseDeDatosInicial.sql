@@ -2,14 +2,14 @@ CREATE DATABASE IF NOT EXISTS simple_shop;
 USE simple_shop;
 
 -- Tabla de usuarios básica
-CREATE TABLE users (
+CREATE TABLE User (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL,
     password VARCHAR(50) NOT NULL
 );
 
 -- Tabla de productos CON DESCRIPCIÓN
-CREATE TABLE products (
+CREATE TABLE Product (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     description TEXT NOT NULL,  -- Columna añadida para descripción
@@ -18,7 +18,7 @@ CREATE TABLE products (
 );
 
 -- Carrito (1 por usuario)
-CREATE TABLE carts (
+CREATE TABLE Cart (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL UNIQUE,
     FOREIGN KEY (user_id) REFERENCES users(id)
@@ -36,7 +36,7 @@ CREATE TABLE cart_items (
 
 
 -- Tabla de órdenes simplificada
-CREATE TABLE orders (
+CREATE TABLE Order (
     order_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     total DECIMAL(10,2) NOT NULL,
