@@ -25,7 +25,7 @@ CREATE TABLE Cart (
 );
 
 -- Items del carrito
-CREATE TABLE cart_items (
+CREATE TABLE Cart_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     cart_id INT NOT NULL,
     product_id INT NOT NULL,
@@ -49,7 +49,7 @@ CREATE TABLE Order (
 );
 
 -- Tabla de items de orden simplificada
-CREATE TABLE order_items (
+CREATE TABLE Order_items (
     item_id INT AUTO_INCREMENT PRIMARY KEY,
     order_id INT NOT NULL,
     product_id INT NOT NULL,
