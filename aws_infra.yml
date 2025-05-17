@@ -312,14 +312,119 @@ Resources:
         UserData: 
           Fn::Base64: !Sub |
             #!/bin/bash -xe
-            # Actualizar sistema
+            # --- PASO 1: Actualizar sistema e instalar dependencias ---
             yum update -y
-            
-            # Instalar Node.js y herramientas
-            curl -sL https://rpm.nodesource.com/setup_14.x | sudo bash -
-            yum install -y nodejs git
+            amazon-linux-extras install java-openjdk11 -y
+            yum install -y maven git mysql nginx
 
-  # ==================== AUTO SCALING GROUP ====================
+            # --- PASO 2: Configurar y desplegar el backend Spring Boot ---
+            # Clonar el repositorio del backend
+            git clone https://github.com/juaca2004/BackEndEcommerse.git /var/app/backend
+            cd /var/app/backend
+
+            # Crear archivo de configuración de Spring Boot
+            cat > /var/app/backend/src/main/resources/application.properties <<EOL
+            spring.datasource.url=jdbc:mysql://${DBInstance.Endpoint.Address}:3306/simple_shop
+            spring.jpa.hibernate.ddl-auto=update
+            server.port=8080
+            EOL
+            
+            # Compilar la aplicación
+            mvn clean package
+
+
+            # --- PASO 3: Configurar el frontend estático con Nginx ---
+            # Clonar el repositorio del frontend
+            git clone https://github.com/LinaA041/Proyecto_Final_InfraIII.git /var/www/frontend
+
+            # Configurar Nginx como proxy inverso
+            cat > /etc/nginx/conf.d/ecommerce.conf <<EOL
+            server {
+                listen 80;
+                server_name _;
+                
+                # Servir archivos estáticos del frontend
+                location / {
+                    root /var/www/frontend;
+                    index index.html;
+                    try_files \$uri \$uri/ /index.html;
+                }
+                
+                # Redirigir API al backend Spring Boot
+                location /api {
+                    proxy_pass http://localhost:8080;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                }
+            }
+            EOL
+
+            # --- PASO 4: Cargar el esquema SQL en RDS ---
+            
+            # Esperar a que RDS esté disponible (puede tomar varios minutos)
+            while ! nc -z ${DBInstance.Endpoint.Address} 3306; do
+              sleep 10
+              echo "Esperando que RDS esté disponible..."
+            done
+
+            # Cargar el esquema SQL (asumiendo que está en /var/www/frontend/esquema.sql)
+            if [ -f "/var/www/frontend/BaseDeDatosInicial.sql" ]; then
+              mysql -h ${DBInstance.Endpoint.Address} -u ${DBUsername} -p${DBPassword} simple_shop < /var/www/frontend/esquema.sql
+              echo "Esquema SQL cargado exitosamente"
+            else
+              echo "Advertencia: No se encontró el archivo esquema.sql"
+            fi
+
+
+            # --- PASO 5: Configurar Spring Boot como servicio ---
+            
+            cat > /etc/systemd/system/springboot.service <<EOL
+            [Unit]
+            Description=Spring Boot Application
+            After=syslog.target
+            After=network.target
+            
+            [Service]
+            User=ec2-user
+            WorkingDirectory=/var/app/backend
+            ExecStart=/usr/bin/java -jar /var/app/backend/target/*.jar
+            SuccessExitStatus=143
+            Restart=always
+            RestartSec=10
+            StandardOutput=syslog
+            StandardError=syslog
+            SyslogIdentifier=springboot
+            
+            [Install]
+            WantedBy=multi-user.target
+            EOL
+
+            # --- PASO 6: Iniciar servicios ---
+    
+            # Habilitar e iniciar servicios
+            systemctl enable nginx
+            systemctl start nginx
+            
+            systemctl enable springboot.service
+            systemctl start springboot.service
+
+
+            # --- PASO 7: Configuración adicional ---
+            
+            # Configurar firewall
+            firewall-cmd --zone=public --add-port=80/tcp --permanent
+            firewall-cmd --reload
+
+
+            # Verificar estado de los servicios
+            systemctl status nginx
+            systemctl status springboot.service
+            
+            echo "Implementación completada exitosamente"
+    
+
+    # ==================== AUTO SCALING GROUP ====================
   WebServerAutoScalingGroup:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
     Properties:
