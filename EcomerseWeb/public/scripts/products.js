@@ -2,10 +2,15 @@ let userJSON= window.localStorage.getItem('user');
 
 if(userJSON===null){
   window.location.href = './login.html';
+}else{
+    userJSON=JSON.parse(userJSON);
 }
 
+
 function addToCart(productId) {
-    fetch(`/cart/add/${productId}`, { method: 'POST' })
+    fetch(`http://localhost:8080/cart/add/${userJSON.id}/${productId}`, {
+    method: 'POST'
+})
         .then(() => alert('Producto añadido al carrito'))
         .catch(err => console.error('Error:', err));
 }
@@ -26,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <h3>${product.name}</h3>
                 <p class="product-description">${product.description}</p>
                 <p class="product-price">$${product.price}</p>
-                <button class="add-btn" onclick="addToCart(${product.id})">Añadir al carrito</button>
+                <button class="add-to-cart" onclick="addToCart(${product.id})">Añadir al carrito</button>
             `;
             grid.appendChild(productDiv);
         });
@@ -48,3 +53,14 @@ document.addEventListener('DOMContentLoaded', () => {
         renderProducts(filtered);
     });
 });
+
+
+const exitButton = document.getElementById('logoutBtn');
+
+exitButton.addEventListener('click', exit);
+
+
+function exit(){
+    window.location.href = "./index.html";
+    localStorage.clear();
+}

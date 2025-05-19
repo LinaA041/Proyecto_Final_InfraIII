@@ -1,8 +1,3 @@
-let userJSON= window.localStorage.getItem('user');
-
-if(userJSON===null){
-  window.location.href = './login.html';
-}
 
 function handleLogin() {
     const form = document.getElementById('login-form'); 

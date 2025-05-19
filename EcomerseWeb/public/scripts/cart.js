@@ -33,3 +33,14 @@ function removeFromCart(itemId) {
 
 
 updateCart();
+
+
+const exitButton = document.getElementById('logoutBtn');
+
+exitButton.addEventListener('click', exit);
+
+
+function exit(){
+    window.location.href = "./index.html";
+    localStorage.clear();
+}
