@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    fetch('/api/products')
+    fetch('http://localhost:8080/api/products')
         .then(res => res.json())
         .then(products => {
             allProducts = products;

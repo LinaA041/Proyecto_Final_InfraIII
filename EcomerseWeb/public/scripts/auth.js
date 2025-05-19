@@ -11,7 +11,7 @@ function handleLogin() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
         })
-        .then(() => window.location.href = '/products')
+        .then(() => window.location.href = './index.html')
         .catch(() => alert('Credenciales incorrectas'));
     });
 }
