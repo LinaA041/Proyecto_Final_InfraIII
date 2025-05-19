@@ -1,3 +1,8 @@
+let userJSON= window.localStorage.getItem('user');
+
+if(userJSON===null){
+  window.location.href = './login.html';
+}
 
 function handleLogin() {
     const form = document.getElementById('login-form'); 
@@ -5,14 +10,33 @@ function handleLogin() {
         e.preventDefault();
         const username = form.elements['username'].value;
         const password = form.elements['password'].value;
-
         fetch('http://localhost:8080/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-        })
-        .then(() => window.location.href = './index.html')
-        .catch(() => alert('Credenciales incorrectas'));
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    })
+    .then(response => {
+        if (!response.ok) {
+            // Si la respuesta no es OK, lanza un error con el mensaje del backend
+            return response.json().then(data => {
+                throw new Error(data.message || 'Error en el login');
+            });
+        }
+        // Si todo está bien, continúa con la conversión del cuerpo
+        return response.json();
+    })
+    .then(data => {
+        // Aquí tienes al usuario (data) y puedes guardarlo
+        const user = JSON.stringify(data);
+        localStorage.setItem('user', user);
+        window.location.href = './index.html';
+    })
+    .catch(error => {
+        // Cae aquí si hubo algún problema
+        alert(error.message || 'Credenciales incorrectas');
+    });
+
+    
     });
 }
 
@@ -35,8 +59,10 @@ function handleRegister() {
         })
         .then(response => {
             if (response.ok) {
-                console.log("entre"); 
+                let data = response.json();
+                let user = JSON.stringify(data);
                 window.location.href = './index.html';
+                window.localStorage.setItem('user',user);
             } else {
                 return response.json().then(data => {
                     alert(data.message || 'Error en el registro');
@@ -54,3 +80,14 @@ document.addEventListener('DOMContentLoaded', () => {
         handleRegister();
     }
 });
+
+
+const exitButton = document.getElementById('logoutBtn');
+
+exitButton.addEventListener('click', exit);
+
+
+function exit(){
+    window.location.href = "./index.html";
+    localStorage.clear();
+}

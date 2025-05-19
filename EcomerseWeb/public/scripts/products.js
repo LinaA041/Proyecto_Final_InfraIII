@@ -1,3 +1,9 @@
+let userJSON= window.localStorage.getItem('user');
+
+if(userJSON===null){
+  window.location.href = './login.html';
+}
+
 function addToCart(productId) {
     fetch(`/cart/add/${productId}`, { method: 'POST' })
         .then(() => alert('Producto añadido al carrito'))

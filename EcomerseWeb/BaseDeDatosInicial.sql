@@ -1,70 +1,7 @@
-CREATE DATABASE IF NOT EXISTS simple_shop;
+
 USE simple_shop;
 
--- Tabla de usuarios básica
-CREATE TABLE User (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) NOT NULL,
-    password VARCHAR(50) NOT NULL
-);
-
--- Tabla de productos CON DESCRIPCIÓN
-CREATE TABLE Product (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    description TEXT NOT NULL,  -- Columna añadida para descripción
-    price DECIMAL(10,2) NOT NULL,
-    stock INT NOT NULL
-);
-
--- Carrito (1 por usuario)
-CREATE TABLE Cart (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL UNIQUE,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
-
--- Items del carrito
-CREATE TABLE Cart_items (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    cart_id INT NOT NULL,
-    product_id INT NOT NULL,
-    quantity INT NOT NULL DEFAULT 1,
-    FOREIGN KEY (cart_id) REFERENCES carts(id),
-    FOREIGN KEY (product_id) REFERENCES products(id)
-);
-
-
--- Tabla de órdenes simplificada
-CREATE TABLE Order (
-    order_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    total DECIMAL(10,2) NOT NULL,
-    city TEXT NOT NULL,
-    address TEXT NOT NULL,
-    fullName TEXT NOT NULL,
-    typePayment TEXT NOT NULL,
-    status VARCHAR(20) DEFAULT 'pending',
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
-
--- Tabla de items de orden simplificada
-CREATE TABLE Order_items (
-    item_id INT AUTO_INCREMENT PRIMARY KEY,
-    order_id INT NOT NULL,
-    product_id INT NOT NULL,
-    quantity INT NOT NULL,
-    price DECIMAL(10,2) NOT NULL,
-    FOREIGN KEY (order_id) REFERENCES orders(order_id),
-    FOREIGN KEY (product_id) REFERENCES products(id)
-);
-
--- Datos de ejemplo CON DESCRIPCIONES
-INSERT INTO users (username, password) VALUES 
-('admin', 'admin123'), 
-('cliente', 'cliente123');
-
-INSERT INTO products (name, description, price, stock) VALUES
-('Camiseta', 'Camiseta de algodón 100% talla M, disponible en varios colores', 19.99, 100),
-('Pantalón', 'Pantalón jeans azul, corte recto, tallas del 28 al 40', 39.99, 50),
-('Zapatos', 'Zapatos deportivos para correr, suela antideslizante', 59.99, 30);
+INSERT INTO product (id,name, description, price, stock) VALUES
+(1,'Camiseta', 'Camiseta de algodon 100% talla M, disponible en varios colores', 19.99, 100),
+(2,'Pantalon', 'Pantalon jeans azul, corte recto, tallas del 28 al 40', 39.99, 50),
+(3,'Zapatos', 'Zapatos deportivos para correr, suela antideslizante', 59.99, 30);
