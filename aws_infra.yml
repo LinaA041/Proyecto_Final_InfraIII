@@ -12,7 +12,7 @@ Parameters:
   InstanceType:
     Description: 'Tipo de instancia EC2'
     Type: String
-    Default: 't2.micro'
+    Default: 't2.medium'
     AllowedValues: ['t2.micro', 't2.small', 't2.medium']
 
   DBInstanceType:
@@ -307,7 +307,7 @@ Resources:
     Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
     Properties:
       Name: !Sub '${EnvironmentName}-TG'
-      Port: 8080  # Cambiado de 80 a 8080
+      Port: 80  # Cambiado de 80 a 8080
       Protocol: HTTP
       VpcId: !Ref VPC
       HealthCheckPath: '/'
@@ -370,6 +370,8 @@ Resources:
                 sudo yum install -y git
                 sudo yum install -y maven
                 sudo yum install -y nc
+                sudo rpm -Uvh https://repo.mysql.com/mysql80-community-release-el7-7.noarch.rpm
+                sudo yum install -y mysql-community-client --skip-broken
 
                 sudo mkdir -p /var/app/backend
                 sudo mkdir -p /var/www/frontend
@@ -426,23 +428,6 @@ Resources:
                 EOF
 
 
-                # --- PASO 4: Cargar el esquema SQL en RDS ---
-                
-                # Esperar a que RDS esté disponible (puede tomar varios minutos)
-                while ! nc -z ${DBEndpoint} 3306; do
-                  sleep 10
-                  echo "Esperando que RDS esté disponible..."
-                done
-
-                # Cargar el esquema SQL (asumiendo que está en /var/www/frontend/esquema.sql)
-                if [ -f "/var/www/frontend/EcomerseWeb/BaseDeDatosInicial.sql" ]; then
-                  mysql -h ${DBEndpoint} -u ${DBUsername} -p${DBPassword} simple_shop < /var/www/frontend/EcomerseWeb/BaseDeDatosInicial.sql
-                  echo "Esquema SQL cargado exitosamente"
-                else
-                  echo "Advertencia: No se encontró el archivo esquema.sql"
-                fi
-
-
                 # --- PASO 5: Configurar Spring Boot como servicio ---
                 
                 sudo tee /etc/systemd/system/springboot.service > /dev/null << 'EOL'
@@ -454,7 +439,7 @@ Resources:
                 [Service]
                 User=ec2-user
                 WorkingDirectory=/var/app/backend/ProyectoFinal
-                ExecStart=/usr/bin/java -jar /var/app/backend/ProyectoFinal/target/*.jar
+                ExecStart=/usr/bin/java -jar /var/app/backend/ProyectoFinal/target/ProyectoFinal-0.0.1-SNAPSHOT.jar
                 SuccessExitStatus=143
                 Restart=always
                 RestartSec=10
