@@ -1,3 +1,12 @@
+let userJSON= window.localStorage.getItem('user');
+
+if(userJSON===null){
+  window.location.href = './login.html';
+}else{
+    userJSON=JSON.parse(userJSON);
+}
+
+
 document.addEventListener('DOMContentLoaded', function() {
     const checkoutForm = document.getElementById('checkoutForm');
     const btnConfirm = document.querySelector('.btn-confirm');
@@ -28,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 paymentMethod: document.querySelector('input[name="payment"]:checked').value
             };
 
-            const response = await fetch('/api/orders/create', {
+            const response = await fetch(`http://localhost:8080/api/order/create/${userJSON.id}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -39,7 +48,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.ok) {
                 const result = await response.json();
                 alert('¡Compra realizada con éxito!');
-                window.location.href = `/index.html`;
+                window.location.href = `./index.html`;
             } else {
                 const error = await response.json();
                 alert(error.message || 'Error al procesar la orden');
@@ -77,11 +86,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (cardNumber.length < 13 || cardNumber.length > 16) {
                 alert('Número de tarjeta inválido (debe tener 13-16 dígitos)');
-                return false;
-            }
-
-            if (!/^(0[1-9]|1[0-2])\/[0-9]{2}$/.test(expiryDate)) {
-                alert('Formato de fecha inválido (use MM/AA)');
                 return false;
             }
 

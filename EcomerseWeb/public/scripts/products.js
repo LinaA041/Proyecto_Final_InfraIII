@@ -9,10 +9,20 @@ if(userJSON===null){
 
 function addToCart(productId) {
     fetch(`http://localhost:8080/cart/add/${userJSON.id}/${productId}`, {
-    method: 'POST'
-})
-        .then(() => alert('Producto añadido al carrito'))
-        .catch(err => console.error('Error:', err));
+        method: 'POST'
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.json().then(data => {
+                alert(data.message); // Aquí accedes correctamente al mensaje
+            });
+        } else {
+            return response.json().then(data => {
+                alert(data.message);
+            });
+        }
+    })
+    .catch(err => console.error('Error:', err));
 }
 
 document.addEventListener('DOMContentLoaded', () => {

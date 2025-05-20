@@ -1,9 +1,18 @@
+let userJSON= window.localStorage.getItem('user');
+
+if(userJSON===null){
+  window.location.href = './login.html';
+}else{
+    userJSON=JSON.parse(userJSON);
+}
 
 function updateCart() {
-    fetch('/api/cart')
+    fetch(`http://localhost:8080/api/cart/${userJSON.id}`,{
+        method: 'GET'
+    })
         .then(res => res.json())
         .then(cart => {
-            const tbody = document.querySelector('#cart-table tbody'); 
+            const tbody = document.getElementById('cartItems');
             tbody.innerHTML = '';
             let total = 0;
 
@@ -21,14 +30,19 @@ function updateCart() {
                 `;
             });
 
-            document.getElementById('total-amount').textContent = total.toFixed(2); // ID en tu HTML
+            document.getElementById('cartTotal').textContent = total.toFixed(2); // ID en tu HTML
         });
 }
 
 function removeFromCart(itemId) {
-    fetch(`/cart/remove/${itemId}`, { method: 'DELETE' })
-        .then(() => updateCart())
-        .catch(err => console.error('Error:', err));
+    fetch(`http://localhost:8080/remove/${userJSON.id}/${itemId}`, { method: 'DELETE' })
+        .then(res => {
+            if (!res.ok) {
+                return res.text().then(text => { throw new Error(text) });
+            }
+            return updateCart();
+        })
+        .catch(err => console.error('Error al eliminar el ítem del carrito:', err.message));
 }
 
 
@@ -43,4 +57,19 @@ exitButton.addEventListener('click', exit);
 function exit(){
     window.location.href = "./index.html";
     localStorage.clear();
+}
+
+const processPay = document.getElementById('checkoutBtn');
+
+processPay.addEventListener('click', process);
+
+function process() {
+    const totalText = document.getElementById('cartTotal').textContent.trim();
+    const totalNumber = parseFloat(totalText.replace('$', ''));
+
+    if (isNaN(totalNumber) || totalNumber === 0) {
+        alert("Añada algún producto al carro");
+    } else {
+        window.location.href = "./checkout.html";
+    }
 }
