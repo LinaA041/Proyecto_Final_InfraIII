@@ -8,7 +8,7 @@ if(userJSON===null){
 
 
 function addToCart(productId) {
-    fetch(`/cart/add/${userJSON.id}/${productId}`, {
+    fetch(`/api/cart/add/${userJSON.id}/${productId}`, {
         method: 'POST'
     })
     .then(response => {

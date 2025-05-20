@@ -35,7 +35,7 @@ function updateCart() {
 }
 
 function removeFromCart(itemId) {
-    fetch(`/remove/${userJSON.id}/${itemId}`, { method: 'DELETE' })
+    fetch(`/api/remove/${userJSON.id}/${itemId}`, { method: 'DELETE' })
         .then(res => {
             if (!res.ok) {
                 return res.text().then(text => { throw new Error(text) });
