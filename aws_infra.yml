@@ -426,8 +426,7 @@ Resources:
                     }
                 }
                 EOF
-
-
+                
                 # --- PASO 5: Configurar Spring Boot como servicio ---
                 
                 sudo tee /etc/systemd/system/springboot.service > /dev/null << 'EOL'

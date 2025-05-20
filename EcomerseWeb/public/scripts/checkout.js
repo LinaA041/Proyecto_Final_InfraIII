@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 paymentMethod: document.querySelector('input[name="payment"]:checked').value
             };
 
-            const response = await fetch(`http://localhost:8080/api/order/create/${userJSON.id}`, {
+            const response = await fetch(`/api/order/create/${userJSON.id}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

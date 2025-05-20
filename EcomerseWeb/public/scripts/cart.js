@@ -7,7 +7,7 @@ if(userJSON===null){
 }
 
 function updateCart() {
-    fetch(`http://localhost:8080/api/cart/${userJSON.id}`,{
+    fetch(`/api/cart/${userJSON.id}`,{
         method: 'GET'
     })
         .then(res => res.json())
@@ -35,7 +35,7 @@ function updateCart() {
 }
 
 function removeFromCart(itemId) {
-    fetch(`http://localhost:8080/remove/${userJSON.id}/${itemId}`, { method: 'DELETE' })
+    fetch(`/remove/${userJSON.id}/${itemId}`, { method: 'DELETE' })
         .then(res => {
             if (!res.ok) {
                 return res.text().then(text => { throw new Error(text) });

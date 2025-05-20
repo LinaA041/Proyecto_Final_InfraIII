@@ -8,7 +8,7 @@ if(userJSON===null){
 
 
 function addToCart(productId) {
-    fetch(`http://localhost:8080/cart/add/${userJSON.id}/${productId}`, {
+    fetch(`/cart/add/${userJSON.id}/${productId}`, {
         method: 'POST'
     })
     .then(response => {
@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    fetch('http://localhost:8080/api/products')
+    fetch('/api/products')
         .then(res => res.json())
         .then(products => {
             allProducts = products;

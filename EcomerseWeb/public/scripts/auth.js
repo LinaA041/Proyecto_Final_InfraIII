@@ -5,7 +5,7 @@ function handleLogin() {
         e.preventDefault();
         const username = form.elements['username'].value;
         const password = form.elements['password'].value;
-        fetch('http://localhost:8080/auth/login', {
+        fetch('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
@@ -47,7 +47,7 @@ function handleRegister() {
 
         console.log({ username, email, password }); 
 
-        fetch('http://localhost:8080/auth/register', {
+        fetch('/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, email, password })
