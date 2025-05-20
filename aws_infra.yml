@@ -371,7 +371,7 @@ Resources:
                 sudo yum install -y maven
                 sudo yum install -y nc
                 sudo rpm -Uvh https://repo.mysql.com/mysql80-community-release-el7-7.noarch.rpm
-                sudo yum install -y mysql-community-client --skip-broken
+                sudo dnf install mariadb105
 
                 sudo mkdir -p /var/app/backend
                 sudo mkdir -p /var/www/frontend
@@ -404,6 +404,10 @@ Resources:
                 # Clonar el repositorio del frontend
                 git clone https://github.com/LinaA041/Proyecto_Final_InfraIII.git /var/www/frontend
 
+                #-- poner sql
+
+                mysql -h ${DBEndpoint} -u ${DBUsername} -p${DBPassword} simple_shop < /var/www/frontend/EcomerseWeb/BaseDeDatosInicial.sql
+
                 sudo mkdir -p /etc/nginx/conf.d
                 sudo tee /etc/nginx/conf.d/ecommerce.conf > /dev/null <<'EOF'
                 server {
@@ -426,7 +430,7 @@ Resources:
                     }
                 }
                 EOF
-                
+
                 # --- PASO 5: Configurar Spring Boot como servicio ---
                 
                 sudo tee /etc/systemd/system/springboot.service > /dev/null << 'EOL'
