@@ -522,6 +522,14 @@ Resources:
   ###--------------------ALERTAS-------------------
 
 
+# Suscripción por email para alertas críticas
+  CriticalEmailSubscription:
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+      TopicArn: !Ref CriticalAlertsSnsTopic
+
   # Topic principal para alertas críticas
   CriticalAlertsSnsTopic:
     Type: 'AWS::SNS::Topic'
@@ -545,14 +553,6 @@ Resources:
           Value: !Sub '${EnvironmentName}-warning-alerts'
         - Key: Environment
           Value: !Ref EnvironmentName
-
-  # Suscripción por email para alertas críticas
-  CriticalEmailSubscription:
-    Type: 'AWS::SNS::Subscription'
-    Properties:
-      Protocol: email
-      Endpoint: !Ref NotificationEmail
-      TopicArn: !Ref CriticalAlertsSnsTopic
 
   # Suscripción por SMS para alertas críticas
   CriticalSmsSubscription:
@@ -657,7 +657,175 @@ Resources:
       AlarmActions:
         - !Ref CriticalAlertsSnsTopic
       TreatMissingData: notBreaching
+    
+    # ==================== CLOUDTRAIL ====================
   
+  CloudTrailLogsBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Sub 'dev-cloudtrail-logs-${AWS::AccountId}-${AWS::Region}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldLogs
+            Status: Enabled
+            ExpirationInDays: 365
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-cloudtrail-logs'
+        - Key: Environment
+          Value: !Ref EnvironmentName
+  
+
+  CloudTrailLogsBucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref CloudTrailLogsBucket
+      PolicyDocument:
+        Statement:
+          - Sid: AWSCloudTrailAclCheck
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:GetBucketAcl
+            Resource: !GetAtt CloudTrailLogsBucket.Arn
+          - Sid: AWSCloudTrailWrite
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub '${CloudTrailLogsBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                's3:x-amz-acl': bucket-owner-full-control
+  
+
+  #CloudTrail
+
+  EcommerceCloudTrail:
+    Type: 'AWS::CloudTrail::Trail'
+    DependsOn: CloudTrailLogsBucketPolicy
+    Properties:
+      IsLogging: true
+      TrailName: !Sub '${EnvironmentName}-ecommerce-trail'
+      S3BucketName: !Ref CloudTrailLogsBucket
+      S3KeyPrefix: !Sub '${EnvironmentName}-logs'
+      IncludeGlobalServiceEvents: true
+      IsMultiRegionTrail: true
+      EnableLogFileValidation: true
+      EventSelectors:
+        - ReadWriteType: All
+          IncludeManagementEvents: true
+          DataResources:
+            - Type: 'AWS::S3::Object'
+              Values:
+                - !Sub 'arn:aws:s3:::${CloudTrailLogsBucket}/*'
+
+      InsightSelectors:
+        - InsightType: ApiCallRateInsight
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-cloudtrail'
+        - Key: EnvironmentName
+          Value: !Ref EnvironmentName
+
+  # ==================== CLOUDWATCH LOG GROUPS ====================
+  
+  SystemLogsGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '${EnvironmentName}-system-logs'
+      RetentionInDays: 30
+
+  NginxAccessLogsGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '${EnvironmentName}-nginx-access'
+      RetentionInDays: 30
+
+  NginxErrorLogsGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '${EnvironmentName}-nginx-error'
+      RetentionInDays: 30
+
+  SpringBootLogsGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '${EnvironmentName}-springboot-logs'
+      RetentionInDays: 30
+
+#------- DASHBOARD---------------------
+
+
+  EcommerceDashboard:
+    Type: 'AWS::CloudWatch::Dashboard'
+    Properties:
+      DashboardName: !Sub '${EnvironmentName}-ecommerce-dashboard'
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/EC2", "CPUUtilization", "AutoScalingGroupName", "${WebServerAutoScalingGroup}" ]
+                ],
+                "period": 300,
+                "stat": "Average",
+                "region": "${AWS::Region}",
+                "title": "EC2 Instance Metrics"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/ApplicationELB", "RequestCount", "LoadBalancer", "${ApplicationLoadBalancer}" ],
+                  [ ".", "TargetResponseTime", ".", "." ]
+                ],
+                "period": 300,
+                "stat": "Average",
+                "region": "${AWS::Region}",
+                "title": "Load Balancer Metrics"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", "${DBInstance}" ],
+                  [ ".", "DatabaseConnections", ".", "." ],
+                  [ ".", "ReadLatency", ".", "." ],
+                  [ ".", "WriteLatency", ".", "." ]
+                ],
+                "period": 300,
+                "stat": "Average",
+                "region": "${AWS::Region}",
+                "title": "RDS Database Metrics"
+              }
+            }
+          ]
+        }
+
     # ==================== BASTION HOST ====================
   BastionHost:
     Type: 'AWS::EC2::Instance'
@@ -705,3 +873,7 @@ Outputs:
   DashboardURL:
     Description: 'URL del dashboard de CloudWatch'
     Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${EnvironmentName}-ecommerce-dashboard'
+  
+  CloudTrailArn:
+    Description: 'ARN del CloudTrail'
+    Value: !GetAtt EcommerceCloudTrail.Arn
