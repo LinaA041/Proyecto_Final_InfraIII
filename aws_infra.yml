@@ -32,7 +32,7 @@ Parameters:
     Default: 'user'
   
   DBPassword:
-    Description: 'Contraseña de RDS (mínimo 8 caracteres)'
+    Description: 'Contrase?a de RDS (m?nimo 8 caracteres)'
     Type: String
     NoEcho: true
     MinLength: 8
@@ -46,7 +46,7 @@ Parameters:
     Default: 'sandbox-key'  # Nombre que creaste en AWS
   
   SSHLocation:
-    Description: 'IP permitida para acceder al Bastión'
+    Description: 'IP permitida para acceder al Basti?n'
     Type: String
     Default: '0.0.0.0/0'
   #EMAIL
@@ -56,7 +56,7 @@ Parameters:
     Default: 'lina.andrade0411@gmail.com'
     
   PhoneNumber:
-    Description: 'Número de teléfono para SMS'
+    Description: 'N?mero de tel?fono para SMS'
     Type: String
     Default: '+573045505783'
 
@@ -89,7 +89,7 @@ Resources:
       VpcId: !Ref VPC
       CidrBlock: '10.0.1.0/24'
       AvailabilityZone: !Select [0, !GetAZs '']
-      MapPublicIpOnLaunch: true #Asigna IP pública automáticamente (para recursos públicos)
+      MapPublicIpOnLaunch: true #Asigna IP p?blica autom?ticamente (para recursos p?blicos)
       Tags:
         - Key: Name
           Value: !Sub '${EnvironmentName}-PublicSubnet'
@@ -100,7 +100,7 @@ Resources:
       VpcId: !Ref VPC
       CidrBlock: '10.0.2.0/24'
       AvailabilityZone: !Select [1, !GetAZs '']
-      MapPublicIpOnLaunch: true #Asigna IP pública automáticamente (para recursos públicos)
+      MapPublicIpOnLaunch: true #Asigna IP p?blica autom?ticamente (para recursos p?blicos)
       Tags:
         - Key: Name
           Value: !Sub '${EnvironmentName}-PublicSubnet2'
@@ -304,8 +304,8 @@ Resources:
       Name: !Sub '${EnvironmentName}-ALB'
       Scheme: internet-facing  # Accesible desde Internet
       Subnets:
-        - !Ref PublicSubnet # Debe estar en subred pública
-        - !Ref PublicSubnet2 # Debe estar en subred pública
+        - !Ref PublicSubnet # Debe estar en subred p?blica
+        - !Ref PublicSubnet2 # Debe estar en subred p?blica
       SecurityGroups:
         - !Ref LoadBalancerSecurityGroup
       Type: application
@@ -355,7 +355,7 @@ Resources:
         
 
 
-  #Ahora vamos a añadir donde se va a alojar el web server
+  #Ahora vamos a a?adir donde se va a alojar el web server
   WebServerLaunchTemplate:
     Type: 'AWS::EC2::LaunchTemplate'
     Properties:
@@ -392,7 +392,7 @@ Resources:
                 git clone https://github.com/juaca2004/BackEndEcommerse.git /var/app/backend
                 cd /var/app/backend/ProyectoFinal
 
-                # Crear archivo de configuración de Spring Boot
+                # Crear archivo de configuraci?n de Spring Boot
                 cat > /var/app/backend/ProyectoFinal/src/main/resources/application.properties <<EOF
                 spring.application.name=ProyectoFinal
                 spring.jpa.hibernate.ddl-auto=update
@@ -406,11 +406,11 @@ Resources:
                 server.port=8080
                 EOF
                 
-                # Compilar la aplicación
+                # Compilar la aplicaci?n
                 mvn clean package
 
 
-                # --- PASO 3: Configurar el frontend estático con Nginx ---
+                # --- PASO 3: Configurar el frontend est?tico con Nginx ---
                 # Clonar el repositorio del frontend
                 git clone https://github.com/LinaA041/Proyecto_Final_InfraIII.git /var/www/frontend
 
@@ -424,7 +424,7 @@ Resources:
                     listen 80;
                     server_name _;
 
-                    # Servir archivos estáticos del frontend
+                    # Servir archivos est?ticos del frontend
                     location / {
                         root /var/www/frontend/EcomerseWeb/public;
                         index login.html;
@@ -478,7 +478,7 @@ Resources:
                 systemctl status nginx
                 systemctl status springboot.service
                 
-                echo "Implementación completada exitosamente"
+                echo "Implementaci?n completada exitosamente"
 
             - DBEndpoint: !GetAtt DBInstance.Endpoint.Address
               DBUsername: !Ref DBUsername
@@ -518,7 +518,7 @@ Resources:
         LaunchTemplateId: !Ref WebServerLaunchTemplate
         Version: !GetAtt WebServerLaunchTemplate.LatestVersionNumber
       MinSize: 1
-      MaxSize: 3  # Límite del sandbox
+      MaxSize: 3  # L?mite del sandbox
       DesiredCapacity: 1
       TargetGroupARNs:
         - !Ref ALBTargetGroup
@@ -536,12 +536,12 @@ Resources:
   ###--------------------ALERTAS-------------------
 
 
-  # Topic principal para alertas críticas
+  # Topic principal para alertas cr?ticas
   CriticalAlertsSnsTopic:
     Type: 'AWS::SNS::Topic'
     Properties:
       TopicName: !Sub '${EnvironmentName}-critical-alerts'
-      DisplayName: 'Alertas Críticas del Sistema'
+      DisplayName: 'Alertas Cr?ticas del Sistema'
       Tags:
         - Key: Name
           Value: !Sub '${EnvironmentName}-critical-alerts'
@@ -561,7 +561,7 @@ Resources:
           Value: !Ref EnvironmentName
 
 
-  # Suscripción por email para alertas críticas
+  # Suscripci?n por email para alertas cr?ticas
   CriticalEmailSubscription:
     Type: 'AWS::SNS::Subscription'
     Properties:
@@ -569,7 +569,7 @@ Resources:
       Endpoint: !Ref NotificationEmail
       TopicArn: !Ref CriticalAlertsSnsTopic
 
-  # Suscripción por SMS para alertas críticas
+  # Suscripci?n por SMS para alertas cr?ticas
   CriticalSmsSubscription:
     Type: 'AWS::SNS::Subscription'
     Properties:
@@ -577,7 +577,7 @@ Resources:
       Endpoint: !Ref PhoneNumber
       TopicArn: !Ref CriticalAlertsSnsTopic
 
-  # Suscripción por email para alertas de advertencia
+  # Suscripci?n por email para alertas de advertencia
   WarningEmailSubscription:
     Type: 'AWS::SNS::Subscription'
     Properties:
@@ -640,7 +640,7 @@ Resources:
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmName: !Sub '${EnvironmentName}-High-DB-Connections'
-      AlarmDescription: 'Alto número de conexiones a la base de datos'
+      AlarmDescription: 'Alto n?mero de conexiones a la base de datos'
       MetricName: DatabaseConnections
       Namespace: AWS/RDS
       Statistic: Average
@@ -788,11 +788,11 @@ Resources:
 
 Outputs:
   WebsiteURL:
-    Description: 'URL de acceso a la aplicación'
+    Description: 'URL de acceso a la aplicaci?n'
     Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}'
 
   BastionHostIP:
-    Description: 'IP pública del Bastión Host'
+    Description: 'IP p?blica del Basti?n Host'
     Value: !GetAtt BastionHost.PublicIp
 
   DBEndpoint:
@@ -800,11 +800,11 @@ Outputs:
     Value: !GetAtt DBInstance.Endpoint.Address
 
   SSHCommand:
-    Description: 'Comando para conectarse al Bastión'
+    Description: 'Comando para conectarse al Basti?n'
     Value: !Sub 'ssh -i ${KeyName}.pem ec2-user@${BastionHost.PublicIp}'
 
   CriticalAlertsTopicArn:
-    Description: 'ARN del topic SNS para alertas críticas'
+    Description: 'ARN del topic SNS para alertas cr?ticas'
     Value: !Ref CriticalAlertsSnsTopic
     Export:
       Name: !Sub '${EnvironmentName}-critical-alerts-topic'
