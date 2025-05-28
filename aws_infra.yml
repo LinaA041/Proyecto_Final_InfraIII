@@ -136,7 +136,7 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub '${EnvironmentName}-IGW'
-#Utilice el recurso AWS::EC2::VPCGatewayAttachment para asociar una puerta de enlace de Internet con una VPC
+  #Utilice el recurso AWS::EC2::VPCGatewayAttachment para asociar una puerta de enlace de Internet con una VPC
   GatewayAttachment:
     Type: 'AWS::EC2::VPCGatewayAttachment'
     Properties:
@@ -485,9 +485,32 @@ Resources:
               DBPassword: !Ref DBPassword
     
 
+  DBSubnetGroup:
+    Type: 'AWS::RDS::DBSubnetGroup'
+    Properties:
+      DBSubnetGroupDescription: 'Subnet group para RDS'
+      SubnetIds:
+        - !Ref PrivateSubnet
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-DBSubnetGroup'
 
+  # ==================== BASTION HOST ====================
+  BastionHost:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: 't2.micro'
+      ImageId: !FindInMap ['RegionMap', !Ref 'AWS::Region', 'AMI']
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref BastionSecurityGroup
+      KeyName: !Ref KeyName
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-Bastion'
 
-    # ==================== AUTO SCALING GROUP ====================
+  # ==================== AUTO SCALING GROUP ====================
   WebServerAutoScalingGroup:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
     Properties:
@@ -508,16 +531,7 @@ Resources:
           Value: !Sub '${EnvironmentName}-WebServer'
           PropagateAtLaunch: true
 
-  DBSubnetGroup:
-    Type: 'AWS::RDS::DBSubnetGroup'
-    Properties:
-      DBSubnetGroupDescription: 'Subnet group para RDS'
-      SubnetIds:
-        - !Ref PrivateSubnet
-        - !Ref PrivateSubnet2
-      Tags:
-        - Key: Name
-          Value: !Sub '${EnvironmentName}-DBSubnetGroup'
+
 
   ###--------------------ALERTAS-------------------
 
@@ -546,6 +560,7 @@ Resources:
         - Key: Environment
           Value: !Ref EnvironmentName
 
+
   # Suscripción por email para alertas críticas
   CriticalEmailSubscription:
     Type: 'AWS::SNS::Subscription'
@@ -571,6 +586,7 @@ Resources:
       TopicArn: !Ref WarningAlertsSnsTopic
 
 
+  
   # ---- CLOUDWATCH
 
     #----evaluar cual mantener
@@ -585,7 +601,7 @@ Resources:
       Statistic: Average
       Period: 300
       EvaluationPeriods: 2
-      Threshold: 80
+      Threshold: 50
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
         - Name: AutoScalingGroupName
@@ -608,7 +624,7 @@ Resources:
       Namespace: AWS/ApplicationELB
       Statistic: Average
       Period: 300
-      EvaluationPeriods: 2
+      EvaluationPeriods: 1
       Threshold: 3
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
@@ -649,7 +665,7 @@ Resources:
       Statistic: Average
       Period: 300
       EvaluationPeriods: 2
-      Threshold: 80
+      Threshold: 60
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
         - Name: DBInstance
@@ -657,21 +673,118 @@ Resources:
       AlarmActions:
         - !Ref CriticalAlertsSnsTopic
       TreatMissingData: notBreaching
-  
-    # ==================== BASTION HOST ====================
-  BastionHost:
-    Type: 'AWS::EC2::Instance'
-    Properties:
-      InstanceType: 't2.micro'
-      ImageId: !FindInMap ['RegionMap', !Ref 'AWS::Region', 'AMI']
-      SubnetId: !Ref PublicSubnet
-      SecurityGroupIds:
-        - !Ref BastionSecurityGroup
-      KeyName: !Ref KeyName
-      Tags:
-        - Key: Name
-          Value: !Sub '${EnvironmentName}-Bastion'
 
+
+  # Dashboard de CloudWatch para monitoreo  
+
+  EcommerceDashboard:
+    Type: 'AWS::CloudWatch::Dashboard'
+    Properties:
+      DashboardName: !Sub '${EnvironmentName}-ecommerce-dashboard'
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/EC2", "CPUUtilization", "AutoScalingGroupName", "${WebServerAutoScalingGroup}" ]
+                ],
+                "period": 300,
+                "stat": "Average",
+                "region": "${AWS::Region}",
+                "title": "EC2 Instance Metrics"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/ApplicationELB", "RequestCount", "LoadBalancer", "${ApplicationLoadBalancer}" ],
+                  [ ".", "TargetResponseTime", ".", "." ]
+                ],
+                "period": 300,
+                "stat": "Average",
+                "region": "${AWS::Region}",
+                "title": "Load Balancer Metrics"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", "${DBInstance}" ],
+                  [ ".", "DatabaseConnections", ".", "." ],
+                  [ ".", "ReadLatency", ".", "." ],
+                  [ ".", "WriteLatency", ".", "." ]
+                ],
+                "period": 300,
+                "stat": "Average",
+                "region": "${AWS::Region}",
+                "title": "RDS Database Metrics"
+              }
+            }
+          ]
+        }
+
+  
+  CloudTrailBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: Private
+      BucketName: !Sub "cloud-trail-bucket-${AWS::AccountId}-${AWS::Region}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  CloudTrailBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref CloudTrailBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AWSCloudTrailAclCheck
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:GetBucketAcl
+            Resource: !GetAtt CloudTrailBucket.Arn
+
+          - Sid: AWSCloudTrailWrite
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub "${CloudTrailBucket.Arn}/AWSLogs/${AWS::AccountId}/*"
+            Condition:
+              StringEquals:
+                "s3:x-amz-acl": "bucket-owner-full-control"
+
+  CloudTrail: 
+    Type: AWS::CloudTrail::Trail
+    DependsOn: CloudTrailBucketPolicy
+    Properties:
+      TrailName: Produccion-ActivityTrail
+      S3BucketName: !Ref CloudTrailBucket
+      IsLogging: true
+      IncludeGlobalServiceEvents: true
+      EnableLogFileValidation: true
+ 
 
 Outputs:
   WebsiteURL:
@@ -705,3 +818,23 @@ Outputs:
   DashboardURL:
     Description: 'URL del dashboard de CloudWatch'
     Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${EnvironmentName}-ecommerce-dashboard'
+
+  CloudTrailLogsBucketName:
+    Description: "Nombre del bucket donde se almacenan los logs de CloudTrail"
+    Value: !Ref CloudTrailBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-CloudTrailBucketName"
+
+  CloudTrailLogsBucketArn:
+    Description: "ARN del bucket de logs de CloudTrail"
+    Value: !GetAtt CloudTrailBucket.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CloudTrailBucketArn"
+
+  CloudTrailName:
+    Description: "Nombre del Trail creado"
+    Value: !Ref CloudTrail
+    Export:
+      Name: !Sub "${AWS::StackName}-TrailName"
+
+  
