@@ -54,20 +54,24 @@ function handleRegister() {
         })
         .then(response => {
             if (response.ok) {
-                let data = response.json();
-                let user = JSON.stringify(data);
-                window.location.href = './index.html';
-                window.localStorage.setItem('user',user);
+                // Aquí está el cambio clave: debemos devolver la promesa
+                return response.json().then(data => {
+                    const user = JSON.stringify(data);
+                    localStorage.setItem('user', user);
+                    window.location.href = './index.html';
+                });
             } else {
                 return response.json().then(data => {
-                    alert(data.message || 'Error en el registro');
+                    throw new Error(data.message || 'Error en el registro');
                 });
             }
         })
-        .catch((error) => alert('Error de red: ' + error.message));
+        .catch((error) => {
+            console.error("Error en registro:", error);
+            alert(error.message || 'Error de red: ' + error.message);
+        });
     });
 }
-
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('login-form')) handleLogin();
     if (document.getElementById('register-form')){
