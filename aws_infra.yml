@@ -53,12 +53,12 @@ Parameters:
   NotificationEmail:
     Description: 'Email para recibir notificaciones de alarmas'
     Type: String
-    Default: 'lina.andrade0411@gmail.com'
+    Default: 'shernandezsaavedra2004@gmail.com'
     
   PhoneNumber:
     Description: 'N?mero de tel?fono para SMS'
     Type: String
-    Default: '+573045505783'
+    Default: '+573136659925'
 
 
 Mappings:
@@ -623,14 +623,16 @@ Resources:
       MetricName: TargetResponseTime
       Namespace: AWS/ApplicationELB
       Statistic: Average
-      Period: 300
-      EvaluationPeriods: 1
-      Threshold: 3
+      Period: 60
+      EvaluationPeriods: 5
+      Threshold: 2
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
         - Name: LoadBalancer
-          Value: !Ref ApplicationLoadBalancer
+          Value: !GetAtt ApplicationLoadBalancer.LoadBalancerFullName
       AlarmActions:
+        - !Ref WarningAlertsSnsTopic
+      OKActions:
         - !Ref WarningAlertsSnsTopic
       TreatMissingData: notBreaching
 
@@ -646,7 +648,7 @@ Resources:
       Statistic: Average
       Period: 300
       EvaluationPeriods: 2
-      Threshold: 15
+      Threshold: 9
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
         - Name: DBInstance
@@ -665,7 +667,7 @@ Resources:
       Statistic: Average
       Period: 300
       EvaluationPeriods: 2
-      Threshold: 60
+      Threshold: 30
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
         - Name: DBInstance
@@ -681,63 +683,68 @@ Resources:
     Type: 'AWS::CloudWatch::Dashboard'
     Properties:
       DashboardName: !Sub '${EnvironmentName}-ecommerce-dashboard'
-      DashboardBody: !Sub |
-        {
-          "widgets": [
-            {
-              "type": "metric",
-              "x": 0,
-              "y": 0,
-              "width": 12,
-              "height": 6,
-              "properties": {
-                "metrics": [
-                  [ "AWS/EC2", "CPUUtilization", "AutoScalingGroupName", "${WebServerAutoScalingGroup}" ]
-                ],
-                "period": 300,
-                "stat": "Average",
-                "region": "${AWS::Region}",
-                "title": "EC2 Instance Metrics"
+      DashboardBody: !Sub
+        - |
+          {
+            "widgets": [
+              {
+                "type": "metric",
+                "x": 0,
+                "y": 0,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "metrics": [
+                    [ "AWS/EC2", "CPUUtilization", "AutoScalingGroupName", "${WebServerASG}" ]
+                  ],
+                  "period": 300,
+                  "stat": "Average",
+                  "region": "${AWS::Region}",
+                  "title": "EC2 Instance Metrics"
+                }
+              },
+              {
+                "type": "metric",
+                "x": 12,
+                "y": 0,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "metrics": [
+                    [ "AWS/ApplicationELB", "RequestCount", "LoadBalancer", "${ALBFullName}" ],
+                    [ ".", "TargetResponseTime", ".", "." ]
+                  ],
+                  "period": 300,
+                  "stat": "Average",
+                  "region": "${AWS::Region}",
+                  "title": "Load Balancer Metrics"
+                }
+              },
+              {
+                "type": "metric",
+                "x": 0,
+                "y": 6,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "metrics": [
+                    [ "AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", "${RDSInstance}" ],
+                    [ ".", "DatabaseConnections", ".", "." ],
+                    [ ".", "ReadLatency", ".", "." ],
+                    [ ".", "WriteLatency", ".", "." ]
+                  ],
+                  "period": 300,
+                  "stat": "Average",
+                  "region": "${AWS::Region}",
+                  "title": "RDS Database Metrics"
+                }
               }
-            },
-            {
-              "type": "metric",
-              "x": 12,
-              "y": 0,
-              "width": 12,
-              "height": 6,
-              "properties": {
-                "metrics": [
-                  [ "AWS/ApplicationELB", "RequestCount", "LoadBalancer", "${ApplicationLoadBalancer}" ],
-                  [ ".", "TargetResponseTime", ".", "." ]
-                ],
-                "period": 300,
-                "stat": "Average",
-                "region": "${AWS::Region}",
-                "title": "Load Balancer Metrics"
-              }
-            },
-            {
-              "type": "metric",
-              "x": 0,
-              "y": 6,
-              "width": 12,
-              "height": 6,
-              "properties": {
-                "metrics": [
-                  [ "AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", "${DBInstance}" ],
-                  [ ".", "DatabaseConnections", ".", "." ],
-                  [ ".", "ReadLatency", ".", "." ],
-                  [ ".", "WriteLatency", ".", "." ]
-                ],
-                "period": 300,
-                "stat": "Average",
-                "region": "${AWS::Region}",
-                "title": "RDS Database Metrics"
-              }
-            }
-          ]
-        }
+            ]
+          }
+        - WebServerASG: !Ref WebServerAutoScalingGroup
+          ALBFullName: !GetAtt ApplicationLoadBalancer.LoadBalancerFullName
+          RDSInstance: !Ref DBInstance
+
 
   
   CloudTrailBucket:
