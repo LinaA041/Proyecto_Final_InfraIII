@@ -591,6 +591,16 @@ Resources:
 
     #----evaluar cual mantener
 
+  # Política de escalado para aumentar capacidad (Scale-Out)
+  ScaleOutPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AdjustmentType: ChangeInCapacity  
+      AutoScalingGroupName: !Ref WebServerAutoScalingGroup
+      Cooldown: 300 
+      ScalingAdjustment: 1  
+
+
   HighCPUUtilizationAlarm:
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
@@ -608,6 +618,7 @@ Resources:
           Value: !Ref WebServerAutoScalingGroup
       AlarmActions:
         - !Ref CriticalAlertsSnsTopic
+        - !Ref ScaleOutPolicy 
       TreatMissingData: notBreaching
       Tags:
         - Key: Name
